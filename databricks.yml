@@ -1,0 +1,12 @@
+bundle:
+  name: football-lakehouse
+
+include:
+  - resources/workflows/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405614242042437.17.azuredatabricks.net

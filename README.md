@@ -1,6 +1,6 @@
 # Football Lakehouse (Azure Databricks)
 
-## Purpose
+### Purpose
 This repository implements a governed football analytics lakehouse on Azure Databricks,
 designed to support Fantasy Premier League (FPL) transfer optimisation and advanced
 football analytics.
@@ -8,7 +8,7 @@ football analytics.
 The project focuses on **clean data engineering**, **reproducible pipelines**, and
 **explainable optimisation**, rather than building a consumer-facing application.
 
-## Scope
+### Scope
 This project is intended to:
 - Build a robust Bronze / Silver / Gold lakehouse
 - Handle both batch and streaming-style ingestion
@@ -21,7 +21,7 @@ It explicitly does **not** aim to:
 - Optimise purely for prediction accuracy over explainability
 - Use always-on or cost-heavy infrastructure
 
-## Design principles (locked)
+### Design principles
 - Unity Catalog from day one
 - Managed identity only (no storage keys or embedded secrets)
 - Jobs-first compute (no always-on clusters)
@@ -30,7 +30,7 @@ It explicitly does **not** aim to:
 - Cost control > convenience
 - Explicit logic over managed abstractions (e.g. Jobs over DLT)
 
-## Architecture (high level)
+### Architecture
 The system follows a Medallion architecture:
 
 - **Bronze**: raw, append-only, replayable snapshots
@@ -41,7 +41,7 @@ Structured Streaming is used as an **execution pattern**, not a data layer.
 Streaming pipelines write to Bronze tables and are finite, checkpointed jobs
 (e.g. Auto Loader with `availableNow` semantics).
 
-## Data sources
+### Data sources
 - **FPL API**  
   Authoritative source for prices, positions, squads, and historical points.
 
@@ -54,29 +54,30 @@ Streaming pipelines write to Bronze tables and are finite, checkpointed jobs
 The architecture is intentionally extensible to support additional datasets
 (e.g. betting odds, advanced match events) without refactoring core pipelines.
 
-## Repository structure
+### Repository structure
 notebooks/
-00_admin # environment and Unity Catalog smoke tests
-01_bronze # batch ingestion (raw snapshots)
-02_streaming # structured streaming mechanics (Auto Loader)
-03_silver # normalisation, MERGE patterns, idempotency
-04_gold # analytics / optimisation-ready tables
-05_ml # feature engineering and modelling
-06_ops # maintenance, schema evolution, time travel
+- 00_admin        # environment and Unity Catalog smoke tests
+- 01_bronze       # batch ingestion (raw snapshots)
+- 02_streaming    # structured streaming mechanics (Auto Loader)
+- 03_silver       # normalisation, MERGE patterns, idempotency
+- 04_gold         # analytics / optimisation-ready tables
+- 05_ml           # feature engineering and modelling
+- 06_ops          # maintenance, schema evolution, time travel
 
 resources/
-uc # Unity Catalog objects and grants
-workflows # Databricks job/workflow definitions
+- Unity Catalog objects and grants
+
+workflows/         # Databricks job/workflow definitions
 
 src/
-football_lakehouse/
-fpl # FPL API clients and schemas
-live # live match pulse ingestion logic
-transforms # shared transformation logic
-ml # modelling and optimisation helpers
+  football_lakehouse/
+  - fpl           # FPL API clients and schemas
+  - live          # live match pulse ingestion logic
+  - transforms    # shared transformation logic
+  - ml            # modelling and optimisation helpers
 
 
-## Operational model
+### Operational model
 - All pipelines run as **Databricks Jobs**
 - No always-on clusters
 - Streaming jobs are finite and checkpointed
@@ -85,7 +86,7 @@ ml # modelling and optimisation helpers
   - short auto-termination windows
   - explicit scheduling
 
-## Optimisation philosophy
+### Optimisation philosophy
 Transfer recommendations are built using:
 - predictive modelling (expected points over short horizons)
 - deterministic optimisation under FPL constraints
@@ -93,7 +94,7 @@ Transfer recommendations are built using:
 
 The goal is **decision quality and transparency**, not black-box prediction.
 
-## Status
+### Status
 This repository is under active development and is designed to be forked,
 extended, or adapted for other football analytics or optimisation use cases.
 
