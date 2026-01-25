@@ -29,13 +29,15 @@
 # MAGIC CREATE TABLE IF NOT EXISTS bronze.fpl_bootstrap_raw (
 # MAGIC   snapshot_ts   TIMESTAMP,
 # MAGIC   snapshot_date DATE,
+# MAGIC   ingest_ts   TIMESTAMP,
 # MAGIC   run_id        STRING,
 # MAGIC   source_url    STRING,
 # MAGIC   http_status   INT,
-# MAGIC   payload_json  STRING
+# MAGIC   payload_json  STRING,
+# MAGIC   payload_size_bytes BIGINT,
+# MAGIC   payload_sha256 STRING
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -51,7 +53,6 @@
 # MAGIC   payload_json  STRING
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -66,7 +67,6 @@
 # MAGIC   payload       STRING
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -82,7 +82,6 @@
 # MAGIC   payload_json  STRING
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -106,7 +105,6 @@
 # MAGIC   updated_at    TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -124,7 +122,6 @@
 # MAGIC   updated_at      TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -148,7 +145,6 @@
 # MAGIC   updated_at    TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -168,7 +164,6 @@
 # MAGIC   updated_at    TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date)
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
@@ -272,8 +267,7 @@
 # MAGIC   status STRING,
 # MAGIC   updated_at TIMESTAMP
 # MAGIC )
-# MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date);
+# MAGIC USING DELTA;
 # MAGIC
 # MAGIC -- Core modelling / optimisation grain (player x gameweek)
 # MAGIC -- This will be built once player history ingestion exists.
@@ -285,8 +279,7 @@
 # MAGIC   points INT,
 # MAGIC   updated_at TIMESTAMP
 # MAGIC )
-# MAGIC USING DELTA
-# MAGIC PARTITIONED BY (gameweek_id);
+# MAGIC USING DELTA;
 # MAGIC
 # MAGIC -- Live-derived rolling features (short-horizon form + minutes risk)
 # MAGIC CREATE TABLE IF NOT EXISTS gold.fact_live_form (
@@ -297,8 +290,7 @@
 # MAGIC   minutes_risk DOUBLE,
 # MAGIC   updated_at TIMESTAMP
 # MAGIC )
-# MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date);
+# MAGIC USING DELTA;
 # MAGIC
 # MAGIC -- Recommendation output (the "product" table)
 # MAGIC CREATE TABLE IF NOT EXISTS gold.fact_transfer_recommendation (
@@ -312,9 +304,4 @@
 # MAGIC   rationale STRING,
 # MAGIC   created_at TIMESTAMP
 # MAGIC )
-# MAGIC USING DELTA
-# MAGIC PARTITIONED BY (snapshot_date);
-
-# COMMAND ----------
-
-
+# MAGIC USING DELTA;
