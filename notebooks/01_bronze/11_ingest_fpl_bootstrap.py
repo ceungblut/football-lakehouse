@@ -3,6 +3,8 @@
 from datetime import datetime, timezone
 import uuid
 
+spark.conf.set("spark.sql.session.timeZone", "UTC")
+
 spark.sql("USE CATALOG football")
 spark.sql("USE SCHEMA bronze")
 
@@ -21,13 +23,12 @@ timeout_seconds = dbutils.widgets.get("timeout_seconds").strip().lower()
 
 assert write_mode in ("append",), f"write_mode must be append; got: {write_mode}"
 
-print("source_url:", source_url)
-print("run_id:", run_id)
-
 run_id = run_id_in if run_id_in else str(uuid.uuid4())
 snapshot_ts = datetime.now(timezone.utc)
 snapshot_date = snapshot_ts.date().isoformat()  # YYYY-MM-DD
 
+print("source_url:", source_url)
+print("run_id:", run_id)
 print("snapshot_ts(utc):", snapshot_ts.isoformat())
 print("snapshot_date:", snapshot_date)
 
@@ -42,36 +43,30 @@ headers = {
     "User-Agent": "football-lakehouse/1.0 (+Databricks; UC; snapshot ingestion)"
 }
 
-http_status = None
+
+resp = requests.get(
+    source_url,
+    headers=headers,
+    timeout=(float(timeout_seconds), float(timeout_seconds))
+)
+http_status = int(resp.status_code)
 payload_json = None
 payload_size_bytes = None
 payload_sha256 = None
 error_text = None
 
-try:
-    resp = requests.get(
-        source_url,
-        headers=headers,
-        timeout=(float(timeout_seconds), float(timeout_seconds))
-    )
-    http_status = int(resp.status_code)
-
-    # --- FORCE canonical raw JSON string ---
+if http_status == 200:
     try:
-        # If this succeeds, we control ordering + formatting
-        parsed = resp.json()                # dict
+        parsed = resp.json()  
         payload_json = json.dumps(parsed, separators=(",", ":"), sort_keys=True)
     except ValueError:
-        # Fallback: not valid JSON, store raw text
         payload_json = resp.text
+        error_text = "JSON parse failed on 200 response"
+else:
+    payload_json = resp.text
+    error_text = resp.text[:2000]
 
-except Exception as e:
-    payload_bytes = payload_json.encode("utf-8")
-    http_status = -1
-    payload_json = None
-    error_text = repr(e)
-
-# --- Hash + size (STRING ONLY from here down) ---
+# Hash + size of payload
 if payload_json is not None:
     payload_bytes = payload_json.encode("utf-8")
     payload_size_bytes = len(payload_bytes)
@@ -82,18 +77,6 @@ print("payload_size_bytes:", payload_size_bytes)
 print("payload_sha256:", payload_sha256)
 if error_text:
     print("error_text (truncated):", error_text[:500])
-
-# COMMAND ----------
-
-try: 
-    spark.sql("""
-              ALTER TABLE football.bronze.fpl_bootstrap_raw 
-              ADD COLUMNS (
-                  payload_size_bytes BIGINT,
-                  payload_sha256 STRING);
-                """)
-except:
-    pass
 
 # COMMAND ----------
 
@@ -108,6 +91,7 @@ table_name = "football.bronze.fpl_bootstrap_raw"
 
 schema = StructType([
     StructField("snapshot_ts", TimestampType(), False),
+    StructField("ingest_ts", TimestampType(), False),
     StructField("snapshot_date", DateType(), False),
     StructField("run_id", StringType(), False),
     StructField("source_url", StringType(), False),
@@ -117,8 +101,12 @@ schema = StructType([
     StructField("payload_json", StringType(), True),
 ])
 
+# Define ingest_ts as current UTC time
+ingest_ts = datetime.now(timezone.utc)
+
 rows = [Row(
-    snapshot_ts=snapshot_ts.replace(tzinfo=None),   # UTC by convention
+    snapshot_ts=snapshot_ts.replace(tzinfo=None),   
+    ingest_ts=ingest_ts.replace(tzinfo=None),
     snapshot_date=datetime.fromisoformat(snapshot_date).date(),
     run_id=run_id,
     source_url=source_url,
@@ -143,18 +131,25 @@ spark.sql(f"""
     payload_json STRING
     )
     USING DELTA
-    PARTITIONED BY (snapshot_date)
     """)
 
 # COMMAND ----------
 
-df.display()
-
-# COMMAND ----------
-
 # DBTITLE 1,Write to Delta
-# Append-only
-df.write.format("delta").mode("append").saveAsTable(table_name)
+exists = spark.sql(f"""
+    SELECT 1
+    FROM football.bronze.fpl_bootstrap_raw
+    WHERE 
+        snapshot_date = date('{snapshot_date}')
+        AND payload_sha256 = '{payload_sha256}'
+    LIMIT 1
+    """).count() > 0
+
+if exists:
+    print("Duplicate payload detected; skipping write.")
+
+else:
+    df.write.format("delta").mode("append").saveAsTable(table_name)
 
 # COMMAND ----------
 

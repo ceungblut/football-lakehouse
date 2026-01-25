@@ -3,11 +3,11 @@
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 
+spark.conf.set("spark.sql.session.timeZone", "UTC")
+
 spark.sql("USE CATALOG football")
 spark.sql("USE SCHEMA silver")
-
 bronze_tbl = "football.bronze.fpl_bootstrap_raw"
-
 
 # COMMAND ----------
 
@@ -17,23 +17,22 @@ latest = (
       .where(F.col("http_status") == 200)
       .orderBy(F.col("snapshot_ts").desc())
       .select("snapshot_ts", "snapshot_date", "run_id", "source_url", "payload_json")
-      .limit(1)
+      .limit(1).collect()
 )
 
-if latest.count() == 0:
+if not latest:
     raise Exception("No successful (http_status=200) rows found in bronze.fpl_bootstrap_raw")
 
-meta = latest.select("snapshot_ts","snapshot_date","run_id","source_url").first()
-source_snapshot_ts = meta["snapshot_ts"]
-source_snapshot_date = meta["snapshot_date"]
-source_run_id = meta["run_id"]
-source_url = meta["source_url"]
+latest_row = latest[0]
+source_snapshot_ts = latest_row["snapshot_ts"]
+source_snapshot_date = latest_row["snapshot_date"]
+source_run_id = latest_row["run_id"]
+source_url = latest_row["source_url"]
 
 print("Using snapshot_ts:", source_snapshot_ts)
 print("Using snapshot_date:", source_snapshot_date)
 print("Using run_id:", source_run_id)
 print("Source URL:", source_url)
-
 
 # COMMAND ----------
 
@@ -93,7 +92,7 @@ bootstrap_schema = T.StructType([
 ])
 
 parsed = (
-    latest
+    spark.createDataFrame([latest_row])
       .select(
           "snapshot_ts", "snapshot_date", "run_id", "source_url",
           F.from_json(F.col("payload_json"), bootstrap_schema).alias("j")
@@ -125,7 +124,6 @@ teams = (
       )
 )
 
-teams.cache()
 print("teams rows:", teams.count())
 
 
@@ -168,7 +166,6 @@ players = (
       )
 )
 
-players.cache()
 print("players rows:", players.count())
 
 # COMMAND ----------
@@ -197,12 +194,7 @@ gameweeks = (
       )
 )
 
-gameweeks.cache()
 print("gameweeks rows:", gameweeks.count())
-
-# COMMAND ----------
-
-gameweeks.display()
 
 # COMMAND ----------
 
@@ -236,9 +228,6 @@ print("DQ checks passed.")
 # COMMAND ----------
 
 # DBTITLE 1,Write Silver tables (overwrite)
-spark.sql("USE CATALOG football")
-spark.sql("USE SCHEMA silver")
-
 (
   teams.write.format("delta")
     .mode("overwrite")
@@ -266,11 +255,14 @@ print("Wrote silver.team, silver.player, silver.gameweek")
 
 # DBTITLE 1,Verify data
 display(spark.sql("""
-SELECT 'team' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts FROM football.silver.team
-UNION ALL
-SELECT 'player' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts FROM football.silver.player
-UNION ALL
-SELECT 'gameweek' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts FROM football.silver.gameweek
+    SELECT 'team' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts 
+    FROM football.silver.team
+    UNION ALL
+    SELECT 'player' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts 
+    FROM football.silver.player
+    UNION ALL
+    SELECT 'gameweek' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts 
+    FROM football.silver.gameweek
 """))
 
 # COMMAND ----------
