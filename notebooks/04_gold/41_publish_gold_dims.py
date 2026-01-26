@@ -1,6 +1,6 @@
--- Databricks notebook source
 # Databricks notebook source
 # DBTITLE 1,Context
+-- Databricks notebook source
 from pyspark.sql import functions as F
 
 spark.sql("USE CATALOG football")
@@ -140,6 +140,3 @@ display(spark.sql("""
     SELECT 'dim_gameweek', count(*), max(source_snapshot_ts)
     FROM football.gold.dim_gameweek
 """))
-
-# COMMAND ----------
-
