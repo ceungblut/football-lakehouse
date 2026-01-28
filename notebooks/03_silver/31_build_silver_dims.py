@@ -8,10 +8,11 @@ spark.conf.set("spark.sql.session.timeZone", "UTC")
 spark.sql("USE CATALOG football")
 spark.sql("USE SCHEMA silver")
 bronze_tbl = "football.bronze.fpl_bootstrap_raw"
+bronze_fixtures_tbl = "football.bronze.fpl_fixtures_raw"
 
 # COMMAND ----------
 
-# DBTITLE 1,Read latest snapshot
+# DBTITLE 1,Read latest bootstrap snapshot
 latest = (
     spark.table(bronze_tbl)
       .where(F.col("http_status") == 200)
@@ -33,6 +34,28 @@ print("Using snapshot_ts:", source_snapshot_ts)
 print("Using snapshot_date:", source_snapshot_date)
 print("Using run_id:", source_run_id)
 print("Source URL:", source_url)
+
+# COMMAND ----------
+
+# DBTITLE 1,Read latest fixtures snapshot
+latest_fx = (
+    spark.table(bronze_fixtures_tbl)
+      .where(F.col("http_status") == 200)
+      .orderBy(F.col("snapshot_ts").desc())
+      .select("snapshot_ts", "snapshot_date", "run_id", "source_url", "payload_json")
+      .limit(1).collect()
+)
+
+latest_fx_row = latest_fx[0]
+fx_snapshot_ts = latest_fx_row["snapshot_ts"]
+fx_snapshot_date = latest_fx_row["snapshot_date"]
+fx_run_id = latest_fx_row["run_id"]
+fx_source_url = latest_fx_row["source_url"]
+
+print("Using fixtures snapshot_ts:", fx_snapshot_ts)
+print("Using fixtures snapshot_date:", fx_snapshot_date)
+print("Using fixtures run_id:", fx_run_id)
+print("Fixtures Source URL:", fx_source_url)
 
 # COMMAND ----------
 
@@ -198,6 +221,62 @@ print("gameweeks rows:", gameweeks.count())
 
 # COMMAND ----------
 
+# DBTITLE 1,Build Silver: fixture
+fixture_schema = T.StructType([
+    T.StructField("id", T.IntegerType(), True),
+    T.StructField("event", T.IntegerType(), True),
+    T.StructField("kickoff_time", T.StringType(), True),
+    T.StructField("team_h", T.IntegerType(), True),
+    T.StructField("team_a", T.IntegerType(), True),
+    T.StructField("team_h_difficulty", T.IntegerType(), True),
+    T.StructField("team_a_difficulty", T.IntegerType(), True),
+    T.StructField("finished", T.BooleanType(), True),
+    T.StructField("started", T.BooleanType(), True),
+    T.StructField("provisional_start_time", T.BooleanType(), True),
+    T.StructField("minutes", T.IntegerType(), True),
+    T.StructField("code", T.LongType(), True),
+])
+
+fixtures_parsed = (
+    spark.createDataFrame([latest_fx_row])
+      .select(
+          "snapshot_ts", "snapshot_date", "run_id", "source_url",
+          F.from_json(F.col("payload_json"), T.ArrayType(fixture_schema)).alias("fx")
+      )
+)
+
+bad_fx_parse = fixtures_parsed.where(F.col("fx").isNull()).count()
+if bad_fx_parse > 0:
+    raise Exception("Fixtures JSON parse failed: from_json returned null array. Check payload_json.")
+
+fixtures = (
+    fixtures_parsed
+      .select("snapshot_ts", "snapshot_date", "run_id", F.explode("fx").alias("f"))
+      .select(
+          F.col("f.id").cast("int").alias("fixture_id"),
+          F.col("f.event").cast("int").alias("gameweek_id"),
+          F.to_timestamp("f.kickoff_time").alias("kickoff_ts"),
+          F.col("f.team_h").cast("int").alias("team_h_id"),
+          F.col("f.team_a").cast("int").alias("team_a_id"),
+          F.col("f.team_h_difficulty").cast("int").alias("team_h_difficulty"),
+          F.col("f.team_a_difficulty").cast("int").alias("team_a_difficulty"),
+          F.col("f.finished").cast("boolean").alias("finished"),
+          F.col("f.started").cast("boolean").alias("started"),
+          F.col("f.provisional_start_time").cast("boolean").alias("provisional_start_time"),
+          F.col("f.minutes").cast("int").alias("minutes"),
+          F.col("f.code").cast("bigint").alias("fixture_code"),
+          F.col("snapshot_ts").alias("source_snapshot_ts"),
+          F.col("snapshot_date").alias("source_snapshot_date"),
+          F.col("run_id").alias("source_run_id"),
+      )
+      .dropDuplicates(["fixture_id"])
+)
+
+print("fixtures rows:", fixtures.count())
+
+
+# COMMAND ----------
+
 # DBTITLE 1,Data quality check
 def assert_no_null_keys(df, key_col, name):
     n = df.where(F.col(key_col).isNull()).count()
@@ -222,6 +301,9 @@ assert_no_duplicate_keys(players, "player_id", "silver.player")
 
 assert_no_null_keys(gameweeks, "gameweek_id", "silver.gameweek")
 assert_no_duplicate_keys(gameweeks, "gameweek_id", "silver.gameweek")
+
+assert_no_null_keys(fixtures, "fixture_id", "silver.fixture")
+assert_no_duplicate_keys(fixtures, "fixture_id", "silver.fixture")
 
 print("DQ checks passed.")
 
@@ -249,6 +331,13 @@ print("DQ checks passed.")
     .saveAsTable("football.silver.gameweek")
 )
 
+(
+  fixtures.write.format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .saveAsTable("football.silver.fixture")
+)
+
 print("Wrote silver.team, silver.player, silver.gameweek")
 
 # COMMAND ----------
@@ -263,6 +352,9 @@ display(spark.sql("""
     UNION ALL
     SELECT 'gameweek' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts 
     FROM football.silver.gameweek
+    UNION ALL
+    SELECT 'fixture' AS tbl, count(*) AS rows, max(source_snapshot_ts) AS snapshot_ts 
+    FROM football.silver.fixture
 """))
 
 # COMMAND ----------
