@@ -1,4 +1,9 @@
 # Databricks notebook source
+# MAGIC %sql
+# MAGIC SHOW GRANTS ON METASTORE;
+
+# COMMAND ----------
+
 # ===============================
 # 01_uc_smoke_and_grants
 # Purpose: validate Unity Catalog objects, external location, grants, and managed table write

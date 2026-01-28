@@ -9,4 +9,6 @@ targets:
     mode: development
     default: true
     workspace:
-      host: https://adb-7405614242042437.17.azuredatabricks.net
+      host: https://adb-7405617129204408.8.azuredatabricks.net
+    auth:
+      football-weu

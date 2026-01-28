@@ -1,11 +1,28 @@
 # Databricks notebook source
 # MAGIC %sql
-# MAGIC DESCRIBE CATALOG EXTENDED football;
+# MAGIC SHOW CATALOGS;
+# MAGIC
 
 # COMMAND ----------
 
 # MAGIC %sql
+# MAGIC SHOW STORAGE CREDENTIALS;
+
+# COMMAND ----------
+
+# MAGIC %sql 
 # MAGIC SHOW EXTERNAL LOCATIONS;
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC CREATE CATALOG football;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DESCRIBE CATALOG EXTENDED football;
 
 # COMMAND ----------
 

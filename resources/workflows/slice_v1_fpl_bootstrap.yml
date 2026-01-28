@@ -4,43 +4,43 @@ resources:
       name: slice-v1-fpl-bootstrap
       max_concurrent_runs: 1
 
-      # job_clusters:
-      #   - job_cluster_key: slice_v1_single_node
-      #     new_cluster:
-      #       spark_version: 14.3.x-scala2.12
-      #       node_type_id: Standard_D4a_v4
-      #       num_workers: 0
-      #       autotermination_minutes: 15
-      #       data_security_mode: SINGLE_USER
-      #       runtime_engine: STANDARD
-      #       spark_conf:
-      #         spark.databricks.cluster.profile: singleNode
-      #         spark.master: local[*]
-      #       custom_tags:
-      #         ResourceClass: SingleNode
+      job_clusters:
+        - job_cluster_key: slice_v1_single_node
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_D4ds_v5
+            num_workers: 0
+            autotermination_minutes: 10
+            data_security_mode: SINGLE_USER
+            runtime_engine: STANDARD
+            spark_conf:
+              spark.databricks.cluster.profile: singleNode
+              spark.master: local[*]
+            custom_tags:
+              ResourceClass: SingleNode
+              project: football-lakehouse
+              slice: v1
+              env: dev
 
       tasks:
         - task_key: bronze_bootstrap_ingest
-          # job_cluster_key: slice_v1_single_node
-          existing_cluster_id: '0116-185038-ko1vy6jy'
+          job_cluster_key: slice_v1_single_node
           notebook_task:
             notebook_path: ../../notebooks/01_bronze/11_ingest_fpl_bootstrap.py
             base_parameters:
               write_mode: append
-              timeout_seconds: '30'
+              timeout_seconds: "30"
 
         - task_key: silver_build_dims
           depends_on:
             - task_key: bronze_bootstrap_ingest
-          existing_cluster_id: '0116-185038-ko1vy6jy'
-          # job_cluster_key: slice_v1_single_node
+          job_cluster_key: slice_v1_single_node
           notebook_task:
             notebook_path: ../../notebooks/03_silver/31_build_silver_dims.py
 
         - task_key: gold_publish_dims
           depends_on:
             - task_key: silver_build_dims
-          existing_cluster_id: '0116-185038-ko1vy6jy'
-          # job_cluster_key: slice_v1_single_node
+          job_cluster_key: slice_v1_single_node
           notebook_task:
             notebook_path: ../../notebooks/04_gold/41_publish_gold_dims.py
