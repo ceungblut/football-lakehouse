@@ -1,6 +1,5 @@
 # Databricks notebook source
 # DBTITLE 1,Context
--- Databricks notebook source
 from pyspark.sql import functions as F
 
 spark.sql("USE CATALOG football")
