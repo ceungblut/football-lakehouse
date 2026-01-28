@@ -113,6 +113,41 @@ print("Wrote football.gold.dim_gameweek")
 
 # COMMAND ----------
 
+# DBTITLE 1,gold.dim_fixture
+dim_fixture = (
+    spark.table("football.silver.fixture")
+      .select(
+          F.col("fixture_id").cast("int"),
+          F.col("gameweek_id").cast("int"),
+          F.col("kickoff_ts"),
+          F.col("team_h_id").cast("int"),
+          F.col("team_a_id").cast("int"),
+          F.col("team_h_difficulty").cast("int"),
+          F.col("team_a_difficulty").cast("int"),
+          F.col("finished").cast("boolean"),
+          F.col("started").cast("boolean"),
+          F.col("provisional_start_time").cast("boolean"),
+          F.col("minutes").cast("int"),
+          F.col("fixture_code").cast("bigint"),
+          F.col("source_snapshot_ts"),
+          F.col("source_snapshot_date"),
+          F.col("source_run_id"),
+      )
+)
+
+(
+  dim_fixture.write
+    .format("delta")
+    .mode("overwrite")
+    .option("overwriteSchema", "true")
+    .saveAsTable("football.gold.dim_fixture")
+)
+
+print("Wrote football.gold.dim_fixture")
+
+
+# COMMAND ----------
+
 # DBTITLE 1,Gold DQ
 def assert_pk(df, key, name):
     if df.where(F.col(key).isNull()).limit(1).count() > 0:
@@ -123,6 +158,7 @@ def assert_pk(df, key, name):
 assert_pk(dim_team, "team_id", "gold.dim_team")
 assert_pk(dim_player, "player_id", "gold.dim_player")
 assert_pk(dim_gameweek, "gameweek_id", "gold.dim_gameweek")
+assert_pk(dim_fixture, "fixture_id", "gold.dim_fixture")
 
 print("Gold DQ checks passed.")
 
@@ -138,4 +174,7 @@ display(spark.sql("""
     UNION ALL
     SELECT 'dim_gameweek', count(*), max(source_snapshot_ts)
     FROM football.gold.dim_gameweek
+    UNION ALL
+    SELECT 'dim_fixture', count(*), max(source_snapshot_ts)
+    FROM football.gold.dim_fixture
 """))
