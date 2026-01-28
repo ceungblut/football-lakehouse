@@ -93,16 +93,29 @@
 # MAGIC CREATE TABLE IF NOT EXISTS bronze.fpl_fixtures_raw (
 # MAGIC   snapshot_ts   TIMESTAMP,
 # MAGIC   snapshot_date DATE,
+# MAGIC   ingest_ts   TIMESTAMP,
 # MAGIC   run_id        STRING,
 # MAGIC   source_url    STRING,
 # MAGIC   http_status   INT,
-# MAGIC   payload_json  STRING
+# MAGIC   payload_json  STRING,
+# MAGIC   payload_size_bytes BIGINT,
+# MAGIC   payload_sha256 STRING
 # MAGIC )
+# MAGIC
 # MAGIC USING DELTA
 # MAGIC TBLPROPERTIES (
 # MAGIC   delta.autoOptimize.optimizeWrite = true,
 # MAGIC   delta.autoOptimize.autoCompact   = true
 # MAGIC );
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DROP TABLE football.bronze.fpl_fixtures_raw
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 

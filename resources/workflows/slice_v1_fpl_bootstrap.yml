@@ -8,7 +8,7 @@ resources:
         - job_cluster_key: slice_v1_single_node
           new_cluster:
             spark_version: 14.3.x-scala2.12
-            node_type_id: Standard_D4ds_v5
+            node_type_id: Standard_D4ds_v4
             num_workers: 0
             autotermination_minutes: 10
             data_security_mode: SINGLE_USER
@@ -29,7 +29,7 @@ resources:
             notebook_path: ../../notebooks/01_bronze/11_ingest_fpl_bootstrap.py
             base_parameters:
               write_mode: append
-              timeout_seconds: "30"
+              timeout_seconds: '30'
 
         - task_key: silver_build_dims
           depends_on:
