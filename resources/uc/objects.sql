@@ -22,7 +22,6 @@ CREATE TABLE IF NOT EXISTS bronze.fpl_bootstrap_raw (
   payload_json  STRING
 )
 USING DELTA
-PARTITIONED BY (snapshot_date)
 TBLPROPERTIES (
   delta.autoOptimize.optimizeWrite = true,
   delta.autoOptimize.autoCompact   = true
@@ -38,7 +37,6 @@ CREATE TABLE IF NOT EXISTS bronze.live_events_raw (
   payload_json  STRING
 )
 USING DELTA
-PARTITIONED BY (snapshot_date)
 TBLPROPERTIES (
   delta.autoOptimize.optimizeWrite = true,
   delta.autoOptimize.autoCompact   = true
@@ -53,7 +51,6 @@ CREATE TABLE IF NOT EXISTS bronze.live_events_stream_raw (
   payload       STRING
 )
 USING DELTA
-PARTITIONED BY (snapshot_date)
 TBLPROPERTIES (
   delta.autoOptimize.optimizeWrite = true,
   delta.autoOptimize.autoCompact   = true
@@ -69,7 +66,6 @@ CREATE TABLE IF NOT EXISTS bronze.fpl_fixtures_raw (
   payload_json  STRING
 )
 USING DELTA
-PARTITIONED BY (snapshot_date)
 TBLPROPERTIES (
   delta.autoOptimize.optimizeWrite = true,
   delta.autoOptimize.autoCompact   = true
@@ -225,8 +221,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_price_snapshot (
   status STRING,
   updated_at TIMESTAMP
 )
-USING DELTA
-PARTITIONED BY (snapshot_date);
+USING DELTA;
 
 -- Core modelling / optimisation grain (player x gameweek)
 -- This will be built once player history ingestion exists.
@@ -238,8 +233,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_player_gameweek (
   points INT,
   updated_at TIMESTAMP
 )
-USING DELTA
-PARTITIONED BY (gameweek_id);
+USING DELTA;
 
 -- Live-derived rolling features (short-horizon form + minutes risk)
 CREATE TABLE IF NOT EXISTS gold.fact_live_form (
@@ -250,8 +244,7 @@ CREATE TABLE IF NOT EXISTS gold.fact_live_form (
   minutes_risk DOUBLE,
   updated_at TIMESTAMP
 )
-USING DELTA
-PARTITIONED BY (snapshot_date);
+USING DELTA;
 
 -- Recommendation output (the "product" table)
 CREATE TABLE IF NOT EXISTS gold.fact_transfer_recommendation (
@@ -265,6 +258,5 @@ CREATE TABLE IF NOT EXISTS gold.fact_transfer_recommendation (
   rationale STRING,
   created_at TIMESTAMP
 )
-USING DELTA
-PARTITIONED BY (snapshot_date);
+USING DELTA;
 

@@ -10,5 +10,3 @@ targets:
     default: true
     workspace:
       host: https://adb-7405617129204408.8.azuredatabricks.net
-    auth:
-      football-weu
