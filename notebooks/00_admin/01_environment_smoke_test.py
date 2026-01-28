@@ -58,10 +58,10 @@ print("=== Show Tables in bronze ===")
 spark.sql("SHOW TABLES IN bronze").show()
 
 print("=== Describe External Location ext-football-root ===")
-spark.sql("DESCRIBE EXTERNAL LOCATION `ext-football-root`").display()
+spark.sql("DESCRIBE EXTERNAL LOCATION `ext_football_root`").display()
 
 print("=== Show Grants on External Location ===")
-spark.sql("SHOW GRANTS ON EXTERNAL LOCATION `ext-football-root`").display()
+spark.sql("SHOW GRANTS ON EXTERNAL LOCATION `ext_football_root`").display()
 
 # COMMAND ----------
 
@@ -93,8 +93,4 @@ spark.sql("SELECT * FROM test_smoke").show()
 spark.sql("DROP TABLE test_smoke")
 
 print("=== Dummy table creation test PASSED ===")
-
-
-# COMMAND ----------
-
 

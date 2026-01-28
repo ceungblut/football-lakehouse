@@ -43,7 +43,6 @@ headers = {
     "User-Agent": "football-lakehouse/1.0 (+Databricks; UC; snapshot ingestion)"
 }
 
-
 resp = requests.get(
     source_url,
     headers=headers,
