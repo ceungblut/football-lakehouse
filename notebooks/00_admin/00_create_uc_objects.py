@@ -17,7 +17,7 @@
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC CREATE CATALOG football;
+# MAGIC -- CREATE CATALOG football;
 
 # COMMAND ----------
 
@@ -44,6 +44,23 @@
 # MAGIC
 # MAGIC -- FPL bootstrap-static raw snapshot (daily)
 # MAGIC CREATE TABLE IF NOT EXISTS bronze.fpl_bootstrap_raw (
+# MAGIC   snapshot_ts   TIMESTAMP,
+# MAGIC   snapshot_date DATE,
+# MAGIC   ingest_ts   TIMESTAMP,
+# MAGIC   run_id        STRING,
+# MAGIC   source_url    STRING,
+# MAGIC   http_status   INT,
+# MAGIC   payload_json  STRING,
+# MAGIC   payload_size_bytes BIGINT,
+# MAGIC   payload_sha256 STRING
+# MAGIC )
+# MAGIC USING DELTA
+# MAGIC TBLPROPERTIES (
+# MAGIC   delta.autoOptimize.optimizeWrite = true,
+# MAGIC   delta.autoOptimize.autoCompact   = true
+# MAGIC );
+# MAGIC
+# MAGIC CREATE TABLE IF NOT EXISTS bronze.fpl_fixtures_raw (
 # MAGIC   snapshot_ts   TIMESTAMP,
 # MAGIC   snapshot_date DATE,
 # MAGIC   ingest_ts   TIMESTAMP,
@@ -89,33 +106,13 @@
 # MAGIC   delta.autoOptimize.autoCompact   = true
 # MAGIC );
 # MAGIC
-# MAGIC -- (Optional later) Fixtures raw snapshots
-# MAGIC CREATE TABLE IF NOT EXISTS bronze.fpl_fixtures_raw (
-# MAGIC   snapshot_ts   TIMESTAMP,
-# MAGIC   snapshot_date DATE,
-# MAGIC   ingest_ts   TIMESTAMP,
-# MAGIC   run_id        STRING,
-# MAGIC   source_url    STRING,
-# MAGIC   http_status   INT,
-# MAGIC   payload_json  STRING,
-# MAGIC   payload_size_bytes BIGINT,
-# MAGIC   payload_sha256 STRING
-# MAGIC )
 # MAGIC
-# MAGIC USING DELTA
-# MAGIC TBLPROPERTIES (
-# MAGIC   delta.autoOptimize.optimizeWrite = true,
-# MAGIC   delta.autoOptimize.autoCompact   = true
-# MAGIC );
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC DROP TABLE football.bronze.fpl_fixtures_raw
-
-# COMMAND ----------
-
-
+# MAGIC DROP VIEW -- gold.fact_team_fixture_horizon_snapshot
+# MAGIC gold.vw_player_fixture_horizon
 
 # COMMAND ----------
 
@@ -158,7 +155,6 @@
 # MAGIC );
 # MAGIC
 # MAGIC CREATE TABLE IF NOT EXISTS silver.player (
-# MAGIC   snapshot_date DATE,
 # MAGIC   run_id        STRING,
 # MAGIC   player_id     INT,
 # MAGIC   first_name    STRING,
@@ -181,7 +177,6 @@
 # MAGIC );
 # MAGIC
 # MAGIC CREATE TABLE IF NOT EXISTS silver.fixture (
-# MAGIC   snapshot_date DATE,
 # MAGIC   run_id        STRING,
 # MAGIC   fixture_id    INT,
 # MAGIC   gameweek_id   INT,
@@ -235,6 +230,7 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Untitled
 # MAGIC %sql
 # MAGIC -- ============================================================
 # MAGIC -- GOLD: Optimisation-ready tables
@@ -299,6 +295,34 @@
 # MAGIC )
 # MAGIC USING DELTA;
 # MAGIC
+# MAGIC CREATE TABLE IF NOT EXISTS gold.fact_team_fixture_horizon_snapshot(
+# MAGIC   snapshot_date DATE, 
+# MAGIC   gameweek_id INT, 
+# MAGIC   team_id INT,
+# MAGIC   h3_avg_fdr DOUBLE,
+# MAGIC   h3_fixture_count INT, 
+# MAGIC   h5_avg_fdr DOUBLE,
+# MAGIC   h5_fixture_count INT, 
+# MAGIC   h8_avg_fdr DOUBLE,
+# MAGIC   h8_fixture_count INT,
+# MAGIC   updated_at TIMESTAMP
+# MAGIC )
+# MAGIC USING DELTA;
+# MAGIC
+# MAGIC CREATE OR REPLACE VIEW gold.vw_player_fixture_horizon AS
+# MAGIC SELECT
+# MAGIC   f.snapshot_date,
+# MAGIC   f.asof_gameweek_id,
+# MAGIC   p.player_id,
+# MAGIC   p.team_id,
+# MAGIC   f.h3_avg_fdr, f.h3_fixture_count,
+# MAGIC   f.h5_avg_fdr, f.h5_fixture_count,
+# MAGIC   f.h8_avg_fdr, f.h8_fixture_count,
+# MAGIC   f.updated_at
+# MAGIC FROM gold.dim_player p
+# MAGIC JOIN gold.fact_team_fixture_horizon_snapshot f
+# MAGIC   ON p.team_id = f.team_id;
+# MAGIC
 # MAGIC -- Core modelling / optimisation grain (player x gameweek)
 # MAGIC -- This will be built once player history ingestion exists.
 # MAGIC CREATE TABLE IF NOT EXISTS gold.fact_player_gameweek (
@@ -307,7 +331,7 @@
 # MAGIC   team_id INT,
 # MAGIC   minutes INT,
 # MAGIC   points INT,
-# MAGIC   updated_at TIMESTAMP
+# MAGIC   fact_live_form_updated_at TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA;
 # MAGIC
@@ -335,3 +359,7 @@
 # MAGIC   created_at TIMESTAMP
 # MAGIC )
 # MAGIC USING DELTA;
+
+# COMMAND ----------
+
+

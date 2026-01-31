@@ -48,3 +48,10 @@ resources:
           job_cluster_key: slice_v1_single_node
           notebook_task:
             notebook_path: ../../notebooks/04_gold/41_publish_gold_dims.py
+
+        - task_key: gold_team_fixture_horizon_snapshot
+          depends_on:
+            - task_key: gold_publish_dims
+          job_cluster_key: slice_v1_single_node
+          notebook_task:
+            notebook_path: ../../notebooks/04_gold/42_build_fixture_horizons.py
